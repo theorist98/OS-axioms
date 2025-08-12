@@ -251,8 +251,123 @@ The symmetric difference (A \ B) ∪ (B \ A) consists of points in exactly one o
 -/
 lemma invariant_set_iff_symm_diff {Ω} [MeasurableSpace Ω] {μ : Measure Ω} {φ : Flow Ω} {A : Set Ω} :
     invariant_set μ φ A ↔
-    MeasurableSet A ∧ ∀ t, μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) = 0 :=
-  sorry
+    MeasurableSet A ∧ ∀ t, μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) = 0 := by
+  -- Use the previous lemma that characterizes invariant sets via set differences
+  rw [invariant_set_iff_set_diff]
+
+  constructor
+  · -- Forward direction: if A is invariant, then the symmetric difference has measure zero
+    intro h
+    constructor
+    · -- Measurability transfers directly
+      exact h.1
+    · intro t
+      -- We have μ (A \ (φ.T t)⁻¹' A) = 0 and μ ((φ.T t)⁻¹' A \ A) = 0
+      have h1 : μ ((φ.T t)⁻¹' A \ A) = 0 := (h.2 t).1
+      have h2 : μ (A \ (φ.T t)⁻¹' A) = 0 := (h.2 t).2
+
+      -- For the symmetric difference, we have (A △ B) = (A \ B) ∪ (B \ A)
+      -- We need to show that if both components have measure zero, the union does too
+
+      -- By subadditivity of measure, we have μ(S1 ∪ S2) ≤ μ(S1) + μ(S2)
+      have : μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) ≤
+             μ (A \ ((φ.T t) ⁻¹' A)) + μ ((φ.T t) ⁻¹' A \ A) := by
+        apply measure_union_le
+
+      -- Substituting our zero measures and simplifying
+      have : μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) ≤ 0 := by
+        rw [h2, h1, add_zero] at this
+        exact this
+
+      -- A measure is always non-negative, so if it's ≤ 0, it must be = 0
+      exact le_antisymm this (zero_le _)
+
+
+  · -- Reverse direction: if the symmetric difference has measure zero, then A is invariant
+    intro h
+    constructor
+    · -- Measurability transfers directly
+      exact h.1
+    · intro t
+      -- We need to show both μ ((φ.T t)⁻¹' A \ A) = 0 and μ (A \ (φ.T t)⁻¹' A) = 0
+      constructor
+      · -- First part: μ ((φ.T t)⁻¹' A \ A) = 0
+        -- This follows because (φ.T t)⁻¹' A \ A is a subset of the symmetric difference
+        have subset1 : (φ.T t)⁻¹' A \ A ⊆ (A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A) := by
+          apply Set.subset_union_of_subset_right
+          exact Set.Subset.refl _
+
+        -- If a set has measure zero, any subset also has measure zero
+        have le1 : μ ((φ.T t)⁻¹' A \ A) ≤ μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) := by
+          apply MeasureTheory.measure_mono subset1
+
+        -- The right side is zero by our assumption
+        rw [h.2 t] at le1
+
+        -- Since we have 0 ≤ μ((φ.T t)⁻¹' A \ A) ≤ 0, it must be 0
+        exact le_antisymm le1 (zero_le _)
+
+      · -- Similarly for the second part: μ (A \ (φ.T t)⁻¹' A) = 0
+        have subset2 : A \ (φ.T t)⁻¹' A ⊆ (A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A) := by
+          apply Set.subset_union_of_subset_left
+          exact Set.Subset.refl _
+
+        have le2 : μ (A \ (φ.T t)⁻¹' A) ≤ μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) := by
+          apply MeasureTheory.measure_mono subset2
+
+        rw [h.2 t] at le2
+
+/-- Spatial translation in one coordinate of ℝ^4. -/
+    invariant_set μ φ A ↔
+    MeasurableSet A ∧ ∀ t, μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) = 0 := by
+  -- Use the previous lemma that characterizes invariant sets via set differences
+  rw [invariant_set_iff_set_diff]
+
+  -- Show that the two formulations are equivalent
+  constructor
+  · -- Forward direction
+    intro h
+    constructor
+    · exact h.1  -- Measurability transfers directly
+    · intro t
+      -- We have μ ((φ.T t)⁻¹' A \ A) = 0 and μ (A \ (φ.T t)⁻¹' A) = 0
+      -- Need to show their union also has measure zero
+      have h1 := (h.2 t).1  -- μ ((φ.T t)⁻¹' A \ A) = 0
+      have h2 := (h.2 t).2  -- μ (A \ (φ.T t)⁻¹' A) = 0
+      -- The measure of a union is at most the sum of measures
+      have : μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) ≤
+             μ (A \ ((φ.T t) ⁻¹' A)) + μ ((φ.T t) ⁻¹' A \ A) := by
+        apply Measure.union_le
+      -- Now substitute the zero measures
+      calc μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A))
+          ≤ μ (A \ ((φ.T t) ⁻¹' A)) + μ ((φ.T t) ⁻¹' A \ A) := this
+        _ = 0 + 0 := by rw [h2, h1]
+        _ = 0 := by simp
+
+  · -- Reverse direction
+    intro h
+    constructor
+    · exact h.1  -- Measurability transfers directly
+    · intro t
+      constructor
+      · -- Need to show μ ((φ.T t)⁻¹' A \ A) = 0
+        -- This follows because it's a subset of the symmetric difference
+        have subset1 : (φ.T t)⁻¹' A \ A ⊆ (A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A) := by
+          apply Set.subset_union_right
+        have : μ ((φ.T t)⁻¹' A \ A) ≤ μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) := by
+          apply Measure.mono subset1
+        -- Since the right side is 0, the left side must be 0 too
+        rw [h.2 t] at this
+        exact le_antisymm this (ENNReal.zero_le _)
+
+      · -- Similarly for μ (A \ (φ.T t)⁻¹' A) = 0
+        have subset2 : A \ (φ.T t)⁻¹' A ⊆ (A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A) := by
+          apply Set.subset_union_left
+        have : μ (A \ (φ.T t)⁻¹' A) ≤ μ ((A \ ((φ.T t) ⁻¹' A)) ∪ ((φ.T t) ⁻¹' A \ A)) := by
+          apply Measure.mono subset2
+        -- Since the right side is 0, the left side must be 0 too
+        rw [h.2 t] at this
+        exact le_antisymm this (ENNReal.zero_le _)
 
 /-- Spatial translation in one coordinate of ℝ^4. -/
 def spatialTranslate (i : Fin 4) (t : ℝ) (x : SpaceTime) : SpaceTime :=
