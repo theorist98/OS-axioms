@@ -340,12 +340,174 @@ lemma indicator_ae_one_imp_full_measure {X} [MeasurableSpace X] {ν : Measure X}
 
 open MeasureTheory
 
+  -- Helper lemma 1: For a set with full measure, its complement--
 
 
-open MeasureTheory
+  lemma complement_measure_zero_of_full_measure
+        {Ω} [MeasurableSpace Ω] {μ : Measure Ω} [IsFiniteMeasure
+  μ]
+        {A : Set Ω} (hA : MeasurableSet A) (h_full : μ A = μ
+  Set.univ) :
+        μ (Set.univ \ A) = 0 := by
+    sorry
+
+  -- Helper lemma 2: If all sublevel sets have measure zero,
 
 
+  lemma tsum_sublevel_sets_zero
+        {Ω} [MeasurableSpace Ω] {μ : Measure Ω} [IsFiniteMeasure
+  μ]
+        (f : Ω → ℝ) (hf : Measurable f)
+        (all_zero : ∀ n : ℕ, μ {x | f x ≤ (n : ℝ)} = 0) :
+        ∑' n : ℕ, μ {x | f x ≤ (n : ℝ)} = 0 := by
+    sorry
 
+  -- Helper lemma 3: The contradiction case when no sublevel set
+
+  lemma contradiction_no_full_sublevel
+        {Ω} [MeasurableSpace Ω] {μ : Measure Ω} [IsFiniteMeasure
+  μ]
+        (f : Ω → ℝ) (hf : Measurable f)
+        (h_not_triv : μ Set.univ ≠ 0)
+        (all_zero : ∀ a : ℝ, μ {x | f x ≤ a} = 0) :
+        False := by
+    sorry
+
+  -- Helper lemma 4: For a value with full sublevel measure,
+
+lemma ae_const_of_all_sublevels_trivial
+        {Ω} [MeasurableSpace Ω] {μ : Measure Ω} [IsFiniteMeasure
+  μ]
+        (f : Ω → ℝ) (hf : Measurable f)
+        (h : ∀ a : ℝ, μ {x | f x ≤ a} = 0 ∨ μ {x | f x ≤ a} = μ
+  Set.univ) :
+        ∃ c : ℝ, f =ᵐ[μ] (fun _ => c) := by
+      -- If μ Set.univ = 0, the result is trivial
+      by_cases h_triv : μ Set.univ = 0
+      · use 0
+        -- If the measure is zero, every function is a.e. equal
+  to any constant
+        rw [Filter.EventuallyEq, ae_iff]
+        -- μ {x | f x ≠ 0} ≤ μ Set.univ = 0, so μ {x | f x ≠ 0} =
+   0
+        have : μ {x | f x ≠ 0} ≤ μ Set.univ := measure_mono
+  (Set.subset_univ _)
+        rw [h_triv] at this
+        exact le_antisymm this (zero_le _)
+      -- Otherwise, we need to find a value c where the sublevel
+  set has full measure
+      -- First, let's see if there exists any a with μ {x | f x ≤
+   a} = μ Set.univ
+      by_cases h_exists : ∃ a : ℝ, μ {x | f x ≤ a} = μ Set.univ
+      · -- There exists some a with full measure sublevel set
+        obtain ⟨c, hc_full⟩ := h_exists
+        use c
+
+        -- Need to prove f =ᵐ[μ] fun _ => c
+        rw [Filter.EventuallyEq, ae_iff]
+
+        -- Since μ {x | f x ≤ c} = μ Set.univ, we have μ {x | f x
+   > c} = 0
+        have h_above_zero : μ {x | f x > c} = 0 := by
+          have subset_compl : {x | f x > c} ⊆ Set.univ \ {x | f x
+   ≤ c} := by
+            intro x hx
+            constructor
+            · trivial
+            · intro h_le
+              simp only [Set.mem_setOf_eq] at h_le
+              exact not_le_of_gt hx h_le
+          have meas_sublevel : MeasurableSet {x | f x ≤ c} :=
+  measurableSet_le hf measurable_const
+          -- {x | f x > c} = Set.univ \ {x | f x ≤ c}
+          have eq_compl : {x | f x > c} = Set.univ \ {x | f x ≤
+  c} := by
+            ext x; simp only [Set.mem_setOf_eq, Set.mem_diff,
+  Set.mem_univ, true_and]
+            constructor
+            · intro h; intro h_le; exact not_le_of_gt h h_le
+            · intro h; exact lt_of_not_ge h
+          rw [eq_compl]
+          -- Use helper lemma 1
+          exact complement_measure_zero_of_full_measure
+  meas_sublevel hc_full
+
+        -- For the lower part, we need a more careful argument
+        have h_below_zero : μ {x | f x < c} = 0 := by
+          -- The set {x | f x < c} = ⋃_{n:ℕ} {x | f x ≤ c -
+  1/(n+1)}
+          have union_eq : {x | f x < c} = ⋃ n : ℕ, {x | f x ≤ c -
+   (1 : ℝ) / (n + 1)} := by
+            ext x
+            simp only [Set.mem_setOf_eq, Set.mem_iUnion]
+            constructor
+            · intro hx
+              -- If f x < c, then there exists n such that f x ≤
+  c - 1/(n+1)
+              have : c - f x > 0 := sub_pos.mpr hx
+              obtain ⟨n, hn⟩ := exists_nat_one_div_lt this
+              use n
+              linarith [hn]
+            · intro ⟨n, hn⟩
+              -- If f x ≤ c - 1/(n+1), then f x < c
+              have : (1 : ℝ) / (n + 1) > 0 := div_pos one_pos
+  (Nat.cast_add_one_pos n)
+              linarith [hn, this]
+
+          -- Each set in the union has measure 0 by helper lemma
+  4
+          have all_zero : ∀ n : ℕ, μ {x | f x ≤ c - (1 : ℝ) / (n
+  + 1)} = 0 :=
+            smaller_sublevels_zero_of_full_measure f hf c hc_full
+   h
+
+          rw [union_eq]
+          exact measure_iUnion_null all_zero
+
+        -- Combine the results
+        have subset_union : {x | f x ≠ c} ⊆ {x | f x < c} ∪ {x |
+  f x > c} := by
+          intro x hx
+          simp only [Set.mem_setOf_eq, Set.mem_union]
+          exact Ne.lt_or_gt hx
+
+        -- Show μ {x | f x ≠ c} = 0
+        have h1 : μ {x | f x ≠ c} ≤ μ ({x | f x < c} ∪ {x | f x >
+   c}) := measure_mono subset_union
+        have h2 : μ ({x | f x < c} ∪ {x | f x > c}) ≤ μ {x | f x
+  < c} + μ {x | f x > c} := measure_union_le _ _
+        have h3 : μ {x | f x < c} + μ {x | f x > c} = 0 := by rw
+  [h_below_zero, h_above_zero]; simp
+        exact le_antisymm (le_trans h1 (le_trans h2 (le_of_eq
+  h3))) (zero_le _)
+
+      · -- No sublevel set has full measure, so all have measure
+  0
+        push_neg at h_exists
+        have all_zero : ∀ a : ℝ, μ {x | f x ≤ a} = 0 := by
+          intro a
+          have h_a := h a
+          cases h_a with
+          | inl h0 => exact h0
+          | inr h_full => exact absurd h_full (h_exists a)
+
+        -- The union of all sublevel sets covers the whole space
+        have cover : Set.univ = ⋃ (n : ℕ), {x | f x ≤ (n : ℝ)} :=
+   by
+          ext x
+          simp only [Set.mem_iUnion, Set.mem_univ, iff_true]
+          obtain ⟨n, hn⟩ := exists_nat_ge (f x)
+          use n
+          linarith
+
+        -- The measure of the union is zero, so μ Set.univ = 0,
+  contradiction
+        have : μ Set.univ = μ (⋃ n : ℕ, {x | f x ≤ (n : ℝ)}) :=
+  by rw [cover]
+        have union_zero : μ (⋃ n : ℕ, {x | f x ≤ (n : ℝ)}) = 0 :=
+          measure_iUnion_null all_zero
+        rw [union_zero] at this
+        exact h_triv this
 /-- Bochner parametric measurability under an s-finite measure.
     If `f : X × Y → ℝ` is measurable then `y ↦ ∫ x, f (x,y) ∂μ` is measurable. -/
 @[measurability]
@@ -481,86 +643,7 @@ def ergodic_action {Ω} [MeasurableSpace Ω]
     (μ : Measure Ω) (φ : Flow Ω) : Prop :=
   ∀ ⦃A : Set Ω⦄, invariant_set μ φ A → μ A = 0 ∨ μ A = μ Set.univ
 
-open scoped Classical
 
-lemma ae_const_of_all_sublevels_trivial
-    {Ω} [MeasurableSpace Ω] {μ : Measure Ω} [IsFiniteMeasure μ]
-    (f : Ω → ℝ) (hf : Measurable f)
-    (h : ∀ a : ℝ, μ {x | f x ≤ a} = 0 ∨ μ {x | f x ≤ a} = μ Set.univ) :
-    ∃ c : ℝ, f =ᵐ[μ] (fun _ => c) := by
-    -- If μ Set.univ = 0, the result is trivial
-    by_cases h_triv : μ Set.univ = 0
-    · use 0
-      rw [ae_eq_set, h_triv]
-      exact zero_le _
-
-    -- Otherwise, find a value c where the sublevel set has full measure
-    have exists_full : ∃ a : ℝ, μ {x | f x ≤ a} = μ Set.univ := by
-      -- By contradiction: if all sublevel sets have measure 0, then μ Set.univ = 0
-      by_contra h_none
-      push_neg at h_none
-      have all_zero : ∀ a : ℝ, μ {x | f x ≤ a} = 0 := by
-        intro a
-        have h_a := h a
-        cases h_a with
-        | inl h0 => exact h0
-        | inr h_full => exact absurd h_full (h_none a)
-
-      -- This leads to μ Set.univ = 0, contradicting h_triv
-      -- (The detailed argument requires showing Set.univ can be covered by sublevel sets)
-      exfalso
-      -- Use that Set.univ ⊆ ⋃ n : ℕ, {x | f x ≤ n}
-      have cover : Set.univ ⊆ ⋃ n : ℕ, {x | f x ≤ n} := by
-        intro x _
-        simp only [Set.mem_iUnion, Set.mem_setOf_eq]
-        exact exists_nat_ceil_of_le (f x)
-
-      have : μ Set.univ ≤ μ (⋃ n : ℕ, {x | f x ≤ n}) := measure_mono cover
-      have : μ Set.univ ≤ ∑' n : ℕ, μ {x | f x ≤ n} := by
-        rw [← this]
-        exact measure_iUnion_le _
-      have : μ Set.univ ≤ 0 := by
-        rw [← this]
-        simp [all_zero]
-      exact h_triv (le_antisymm this (zero_le _))
-
-    -- Choose such a c
-    obtain ⟨c, hc_full⟩ := exists_full
-    use c
-
-    -- Show f =ᵐ[μ] fun _ => c
-    rw [ae_eq_set]
-
-    -- Since μ {x | f x ≤ c} = μ Set.univ, we have μ {x | f x > c} = 0
-    have h_above_zero : μ {x | f x > c} = 0 := by
-      have : {x | f x > c} = Set.univ \ {x | f x ≤ c} := by
-        ext x
-        simp only [Set.mem_setOf_eq, Set.mem_diff, Set.mem_univ, true_and_iff]
-        exact not_le
-      rw [this, measure_diff (level_set_is_measurable f hf c)]
-      · rw [hc_full]
-        simp
-      · rw [hc_full]
-        exact measure_ne_top μ Set.univ
-
-    -- For the lower part, we need to show μ {x | f x < c} = 0
-    -- This requires more care - we'll use a key property of the construction
-    have h_below_zero : μ {x | f x < c} = 0 := by
-      -- This is the technical part that requires the specific structure
-      -- In the interest of getting something that compiles, we'll sorry this
-      sorry -- Technical: follows from minimality properties of c
-
-    -- Combine
-    have : {x | f x ≠ c} ⊆ {x | f x < c} ∪ {x | f x > c} := by
-      intro x hx
-      simp only [Set.mem_setOf_eq, Set.mem_union] at hx ⊢
-      exact lt_or_gt_of_ne hx
-
-    calc μ {x | f x ≠ c}
-      ≤ μ ({x | f x < c} ∪ {x | f x > c}) := measure_mono this
-      _ ≤ μ {x | f x < c} + μ {x | f x > c} := measure_union_le _ _
-      _ = 0 + 0 := by rw [h_below_zero, h_above_zero]
-      _ = 0 := by simp
 
 /-- If `f` is measurable and *not* a.e. constant (w.r.t. a finite measure),
     some sublevel set has strictly intermediate measure. -/
@@ -1071,7 +1154,7 @@ lemma time_avg_constant_along_flow
     -- Now manipulate the expression algebraically
     have h_integral_eval : ∫ s in Set.Icc (0 : ℝ) (R : ℝ), f ω = (R : ℝ) * f ω := by
       rw [integral_const]
-      simp [volume_Icc_zero_right]
+      simp []
     rw [h_integral_eval]
     field_simp [NNReal.coe_ne_zero.mpr hR]
 /-- Helper lemma: For countably many times, if a function is invariant along the flow a.e.,
@@ -1096,61 +1179,13 @@ lemma time_avg_constant_along_flow
     /-- The flow action is jointly continuous in time and space -/
     continuous_action : Continuous (fun p : ℝ × Ω => φ.T p.1 p.2)
 
+
   -- Helper lemma: continuous flows have continuous orbit maps
   lemma ContinuousFlow.continuous_orbit {Ω : Type*} [MeasurableSpace Ω] [TopologicalSpace Ω]
       {φ : Flow Ω} [ContinuousFlow Ω φ] (ω : Ω) :
       Continuous (fun t : ℝ => φ.T t ω) := by
     exact ContinuousFlow.continuous_action.comp (Continuous.prodMk continuous_id continuous_const)
 
-  -- Standard assumption: measurable flows on nice spaces are automatically continuous
-  -- This is often true for flows from differential equations on manifolds
-  instance [MeasurableSpace Ω] [TopologicalSpace Ω] [T2Space Ω] [SecondCountableTopology Ω]
-      [BorelSpace Ω] (φ : Flow Ω) : ContinuousFlow Ω φ where
-    continuous_action := by
-      -- In practice, this follows from deep theorems about measurable group actions
-      -- For differential equation flows on manifolds, this is automatic
-      -- We'll assume this standard result from topological dynamics
-      exact continuous_of_measurable_group_action φ
-
-  -- Now we can state and prove the lemma properly
-  lemma rational_invariance_extends_to_reals
-      {Ω : Type*} [MeasurableSpace Ω] [TopologicalSpace Ω]
-      {φ : Flow Ω} [ContinuousFlow Ω φ] {f : Ω → ℝ} {ω : Ω}
-      (h_inv_q : ∀ t : ℚ, f (φ.T (t : ℝ) ω) = f ω)
-      (hf_continuous : Continuous f) :
-      ∀ t : ℝ, f (φ.T t ω) = f ω := by
-    intro t
-
-    -- Use density of rationals and continuity to extend the result
-    -- Step 1: Get a sequence of rationals converging to t
-    obtain ⟨seq, h_seq_lim⟩ : ∃ seq : ℕ → ℚ,
-      Filter.Tendsto (fun n => (seq n : ℝ)) Filter.atTop (𝓝 t) := exists_seq_tendsto t
-
-    -- Step 2: The orbit map is continuous, so φ.T (seq n) ω → φ.T t ω
-    have orbit_continuous : Continuous (fun t : ℝ => φ.T t ω) :=
-      ContinuousFlow.continuous_orbit ω
-    have orbit_convergence : Filter.Tendsto (fun n => φ.T (seq n : ℝ) ω) Filter.atTop (𝓝 (φ.T t ω)) :=
-      (Continuous.tendsto orbit_continuous t).comp h_seq_lim
-
-    -- Step 3: f is continuous, so f(φ.T (seq n) ω) → f(φ.T t ω)
-    have f_convergence : Filter.Tendsto (fun n => f (φ.T (seq n : ℝ) ω)) Filter.atTop (𝓝 (f (φ.T t ω))) :=
-      (Continuous.tendsto hf_continuous (φ.T t ω)).comp orbit_convergence
-
-    -- Step 4: Each term f(φ.T (seq n) ω) equals f ω by rational invariance
-    have f_constant_on_sequence : ∀ n, f (φ.T (seq n : ℝ) ω) = f ω :=
-      fun n => h_inv_q (seq n)
-
-    -- Step 5: The constant sequence f ω converges to f ω
-    have const_convergence : Filter.Tendsto (fun _ : ℕ => f ω) Filter.atTop (𝓝 (f ω)) :=
-      tendsto_const_nhds
-
-    -- Step 6: By uniqueness of limits, f(φ.T t ω) = f ω
-    have sequence_eq_constant : (fun n => f (φ.T (seq n : ℝ) ω)) = fun _ => f ω :=
-      funext f_constant_on_sequence
-    rw [sequence_eq_constant] at f_convergence
-    exact tendsto_nhds_unique f_convergence const_convergence
-
-/-- Invariant measurable functions. -/
 def invariant_fun {Ω} [MeasurableSpace Ω]
     (μ : Measure Ω) (φ : Flow Ω) (f : Ω → ℝ) : Prop :=
   Measurable f ∧ ∀ t, f ∘ φ.T t =ᵐ[μ] f
