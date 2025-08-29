@@ -795,7 +795,7 @@ the time average converges almost everywhere.
     ∃ f_star : Ω → ℝ, (Integrable f_star μ) ∧
     (Measurable f_star ∧ ∀ t, f_star ∘ φ.T t =ᵐ[μ] f_star) ∧
     (∀ᵐ ω ∂μ, Tendsto (fun R => timeAvgCesaro φ f ω R)
-                      (⨆ n : ℕ, 𝓟 {R | n ≤ R})
+                      Filter.atTop
                       (𝓝 (f_star ω)))
 
 /--
@@ -806,7 +806,7 @@ This is a fundamental property often called the von Neumann mean ergodic theorem
     {μ : Measure Ω} [IsProbabilityMeasure μ] {φ : Flow Ω}
     (h_inv : invariant_under μ φ) (f : Ω → ℝ) (h_int : Integrable f μ)
     (f_star : Ω → ℝ) (h_limit : ∀ᵐ ω ∂μ, Tendsto (fun R => timeAvgCesaro φ f ω R)
-                                       (⨆ n : ℕ, 𝓟 {R | n ≤ R}) (𝓝 (f_star ω))) :
+                                       Filter.atTop (𝓝 (f_star ω))) :
     ∫ ω, f_star ω ∂μ = ∫ ω, f ω ∂μ
 
 @[simp]
@@ -826,7 +826,7 @@ lemma ergodic_limit_is_constant {Ω : Type*} [MeasurableSpace Ω]
     (Measurable f_star ∧ ∀ t, f_star ∘ φ.T t =ᵐ[μ] f_star) ∧
     (∃ c : ℝ, c = ∫ ω, f ω ∂μ ∧ f_star =ᵐ[μ] fun _ => c) ∧
     (∀ᵐ ω ∂μ, Tendsto (fun R => timeAvgCesaro φ f ω R)
-                      (⨆ n : ℕ, 𝓟 {R | n ≤ R})
+                      Filter.atTop
                       (𝓝 (f_star ω))) := by
   -- Apply Birkhoff's ergodic theorem
   have h_birkhoff := birkhoff_ergodic_theorem h_inv f h_int
@@ -1189,7 +1189,7 @@ structure OS4Axiom (Ω : Type*) [MeasurableSpace Ω] where
   ergodic_sets : ergodic_action μ φ
   mean_ergodic_AE :
     ∀ (f : Ω → ℝ), Integrable f μ →
-      ∀ᵐ ω ∂μ, Tendsto (fun R => timeAvgCesaro φ f ω R) (⨆ n : ℕ, 𝓟 {R | n ≤ R}) (𝓝 (∫ x, f x ∂μ))
+      ∀ᵐ ω ∂μ, Tendsto (fun R => timeAvgCesaro φ f ω R) Filter.atTop (𝓝 (∫ x, f x ∂μ))
 
 /--
 QFT-flavored packaging of the OS4, using a probability measure on field space.
@@ -1209,21 +1209,23 @@ structure OS4QFTAxiom (Φ : Type*) [MeasurableSpace Φ] where
   mean_ergodic_AE :
     ∀ (A : Φ → ℝ), Integrable A (dμ : Measure Φ) →
       ∀ᵐ ω ∂(dμ : Measure Φ),
-        Tendsto (fun R => timeAvgCesaro φ A ω R) (⨆ n : ℕ, 𝓟 {R | n ≤ R}) (𝓝 (∫ x, A x ∂(dμ : Measure Φ)))
+        Tendsto (fun R => timeAvgCesaro φ A ω R) Filter.atTop (𝓝 (∫ x, A x ∂(dμ : Measure Φ)))
 
-/-- Clustering in the translation parameter. -/
-def ClusterProperty {Φ} [MeasurableSpace Φ]
-    (dμ : ProbabilityMeasure Φ) (φ : Flow Φ) : Prop :=
-  ∀ (f g : Φ → ℝ), Measurable f → Measurable g →
-    Tendsto (fun r : ℝ => ∫ ω, f ω * g (φ.T r ω) ∂(dμ : Measure Φ))
-            (⨆ n : ℕ, 𝓟 {r : ℝ | n ≤ r})
-            (𝓝 ((∫ ω, f ω ∂(dμ : Measure Φ)) * (∫ ω, g ω ∂(dμ : Measure Φ))))
-
-/-- Vacuum uniqueness phrased as: invariant complex observables are a.e. constant. -/
 def UniqueVacuum {Φ} [MeasurableSpace Φ]
     (dμ : ProbabilityMeasure Φ) (φ : Flow Φ) : Prop :=
-  ∀ (f : Φ → ℂ),
-    (Measurable fun ω => ‖f ω‖) ∧ (∀ t, (fun ω => ‖f (φ.T t ω)‖) =ᵐ[(dμ : Measure Φ)] fun ω => ‖f ω‖) →
-    ∃ c : ℂ, ∀ᵐ ω ∂(dμ : Measure Φ), f ω = c
+  ∀ f : Φ → ℂ,
+    Measurable f ∧ (∀ t, f ∘ φ.T t =ᵐ[(dμ : Measure Φ)] f) →
+    ∃ c : ℂ, f =ᵐ[(dμ : Measure Φ)] fun _ => c
+
+def ClusterProperty {Φ} [MeasurableSpace Φ]
+    (dμ : ProbabilityMeasure Φ) (φ : Flow Φ) : Prop :=
+  ∀ f g : Φ → ℝ,
+    Integrable f (dμ : Measure Φ) →
+    Integrable g (dμ : Measure Φ) →
+    Tendsto (fun r : ℝ => ∫ ω, f ω * g (φ.T r ω) ∂(dμ : Measure Φ))
+            Filter.atTop
+            (𝓝 ((∫ ω, f ω ∂(dμ : Measure Φ)) * (∫ ω, g ω ∂(dμ : Measure Φ))))
+
+
 
 end OS4
